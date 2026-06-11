@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>简约 AI 对话</title>
+    <style>
+        /* 基础重置与全局字体 */
+        :root {
+            --bg-color: #f9fafb;
+            --container-bg: #ffffff;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --border-color: #e5e7eb;
+            --user-msg-bg: #111827;
+            --user-msg-text: #ffffff;
+            --ai-msg-bg: #f3f4f6;
+            --ai-msg-text: #1f2937;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* --- 全局简约滚动条 --- */
+        *::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        *::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        *::-webkit-scrollbar-thumb {
+            background-color: rgba(0, 0, 0, 0.12);
+            border-radius: 10px;
+        }
+        *::-webkit-scrollbar-thumb:hover {
+            background-color: rgba(0, 0, 0, 0.25);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+        }
+
+        /* 核心容器 */
+        .chat-app {
+            width: 100%;
+            max-width: 1000px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--container-bg);
+            box-shadow: var(--shadow-lg);
+            position: relative;
+        }
+
+        @media (min-width: 820px) {
+            .chat-app {
+                height: 95vh;
+                border-radius: 20px;
+                overflow: hidden;
+            }
+        }
+
+        /* --- 顶部导航栏 --- */
+        .header {
+            padding: 12px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            z-index: 10;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+        }
+
+        .header-title {
+            font-weight: 700;
+            font-size: 1.125rem;
+            letter-spacing: -0.025em;
+            color: var(--text-main);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 20px;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: color 0.2s;
+            position: relative;
+        }
+
+        .nav-links a:hover, .nav-links a.active {
+            color: var(--text-main);
+        }
+
+        .nav-links a.active::after {
+            content: '';
+            position: absolute;
+            bottom: -16px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: var(--text-main);
+            border-radius: 2px;
+        }
+
+        @media (max-width: 600px) {
+            .nav-links { display: none; }
+        }
+
+        /* --- 用户菜单与下拉 --- */
+        .header-right {
+            position: relative;
+        }
+
+        .user-profile {
+            position: relative;
+            cursor: pointer;
+            padding: 4px 0;
+        }
+
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 1px solid var(--border-color);
+            transition: transform 0.2s;
+        }
+
+        .user-profile:hover .avatar {
+            transform: scale(1.05);
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 8px;
+            background-color: var(--container-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: var(--shadow-lg);
+            width: 200px;
+            padding: 8px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.2s ease;
+            z-index: 100;
+        }
+
+        .user-profile:hover .dropdown-menu {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .dropdown-header {
+            padding: 8px 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* --- 新增：高级极简订阅卡片与 Credits 样式 --- */
+        .dropdown-menu {
+            width: 240px; /* 稍微加宽以容纳精美的卡片 */
+        }
+
+        .current-plan-card {
+            background: linear-gradient(135deg, #111827, #374151);
+            color: white;
+            padding: 16px;
+            border-radius: 12px;
+            margin: 4px 8px 16px 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .current-plan-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+        }
+
+        .current-plan-card .plan-name {
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+        }
+
+        .current-plan-card .plan-action {
+            font-size: 0.75rem;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: 500;
+            backdrop-filter: blur(4px);
+        }
+
+        .credits-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 16px 12px 16px;
+        }
+
+        .credits-label {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 500;
+        }
+
+        .credits-value {
+            font-weight: 600;
+            color: var(--text-main);
+            font-size: 1rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; /* 使用等宽字体让数字更具科技感 */
+        }
+
+        .dropdown-divider {
+            height: 1px;
+            background-color: var(--border-color);
+            margin: 8px 0;
+        }
+
+        .settings-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            text-decoration: none;
+            color: var(--text-main);
+            font-size: 0.9rem;
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+
+        .settings-link:hover {
+            background-color: var(--bg-color);
+        }
+
+        /* --- 首页居中模式样式 (Home Mode) --- */
+        .chat-app.is-home .welcome-container {
+            display: flex;
+            flex: 1;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            animation: fadeUp 0.6s ease-out;
+            padding: 20px;
+        }
+
+        .chat-app.is-home .message-area {
+            display: none;
+        }
+
+        .chat-app.is-home .input-area {
+            border-top: none;
+            background: transparent;
+            padding: 0 24px 40px 24px;
+            width: 100%;
+            max-width: 760px;
+            margin: 0 auto;
+        }
+
+        .chat-app.is-home .input-box {
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+            padding: 12px 20px;
+            border-radius: 32px;
+            background-color: var(--container-bg);
+            border: 1px solid var(--border-color);
+        }
+
+        .chat-app.is-home .input-box:focus-within {
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+            border-color: #d1d5db;
+        }
+
+        .chat-app.is-home .suggestions-grid {
+            display: grid;
+        }
+
+        /* --- 欢迎区域内容 --- */
+        .welcome-container {
+            display: none;
+            text-align: center;
+        }
+
+        .welcome-logo {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, #111827, #4b5563);
+            color: white;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 24px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+        }
+
+        .welcome-title {
+            font-size: 2rem;
+            font-weight: 600;
+            color: var(--text-main);
+            letter-spacing: -0.02em;
+            margin-bottom: 8px;
+        }
+
+        .welcome-subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        /* --- 快捷建议卡片 --- */
+        .suggestions-grid {
+            display: none;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-top: 32px;
+            width: 100%;
+        }
+
+        @media (max-width: 600px) {
+            .suggestions-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .suggestion-card {
+            background: var(--container-bg);
+            border: 1px solid var(--border-color);
+            padding: 16px;
+            border-radius: 16px;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        .suggestion-card span {
+            display: block;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 4px;
+        }
+
+        .suggestion-card:hover {
+            background: var(--bg-color);
+            border-color: #d1d5db;
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* --- 聊天消息区域 --- */
+        .message-area {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            scroll-behavior: smooth;
+        }
+
+        .message-row { display: flex; width: 100%; }
+        .message-row.user { justify-content: flex-end; }
+        .message-row.ai { justify-content: flex-start; }
+
+        .bubble {
+            max-width: 85%;
+            padding: 14px 18px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            word-wrap: break-word;
+            position: relative;
+        }
+
+        @media (min-width: 600px) { .bubble { max-width: 75%; } }
+
+        .message-row.user .bubble {
+            background-color: var(--user-msg-bg);
+            color: var(--user-msg-text);
+            border-radius: 18px 18px 4px 18px;
+        }
+
+        .message-row.ai .bubble {
+            background-color: var(--ai-msg-bg);
+            color: var(--ai-msg-text);
+            border-radius: 18px 18px 18px 4px;
+        }
+
+        .chat-image {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            display: block;
+            object-fit: contain;
+        }
+
+        /* --- 输入区域 --- */
+        .input-area {
+            padding: 16px 24px 24px 24px;
+            background-color: var(--container-bg);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease;
+        }
+
+        .image-preview-container {
+            display: none;
+            padding: 0 12px 12px 12px;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .preview-wrapper {
+            position: relative;
+            width: 64px;
+            height: 64px;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        .preview-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .remove-image {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 20px;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 14px;
+            line-height: 1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .remove-image:hover { background: rgba(0, 0, 0, 0.8); }
+
+        .input-box {
+            display: flex;
+            align-items: flex-end;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 8px 12px;
+            transition: all 0.2s ease;
+        }
+
+        .input-box:focus-within {
+            border-color: var(--text-main);
+            background-color: var(--container-bg);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .upload-btn {
+            background: transparent;
+            color: var(--text-muted);
+            border: none;
+            width: 36px;
+            height: 36px;
+            margin-bottom: 2px;
+            margin-right: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: color 0.2s, background-color 0.2s;
+            flex-shrink: 0;
+        }
+
+        .upload-btn:hover {
+            color: var(--text-main);
+            background-color: #e5e7eb;
+        }
+
+        .input-box textarea {
+            flex: 1;
+            border: none;
+            background: transparent;
+            padding: 8px 12px;
+            font-size: 1rem;
+            color: var(--text-main);
+            outline: none;
+            resize: none;
+            max-height: 120px;
+            min-height: 24px;
+            font-family: inherit;
+            line-height: 1.5;
+            overflow-y: hidden;
+        }
+
+        .input-box textarea::placeholder { color: #9ca3af; }
+
+        .send-btn {
+            background-color: var(--text-main);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            margin-bottom: 2px;
+            margin-left: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.1s ease, background-color 0.2s;
+            flex-shrink: 0;
+        }
+
+        .send-btn:hover { background-color: #000000; }
+        .send-btn:active { transform: scale(0.95); }
+        .send-btn svg {
+            width: 16px;
+            height: 16px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transform: translateX(-1px);
+        }
+
+        /* --- 动画 --- */
+        .typing-indicator { display: flex; gap: 4px; padding: 8px 4px; }
+        .typing-indicator span {
+            width: 6px; height: 6px; background-color: var(--text-muted);
+            border-radius: 50%; animation: bounce 1.4s infinite ease-in-out both;
+        }
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* --- 订阅页面 (Modal) --- */
+        .subscription-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(8px);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .subscription-modal.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-container {
+            background: var(--container-bg);
+            width: 90%;
+            max-width: 1000px;
+            max-height: 90vh;
+            border-radius: 24px;
+            padding: 40px;
+            overflow-y: auto;
+            position: relative;
+            transform: translateY(20px) scale(0.95);
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        .subscription-modal.active .modal-container {
+            transform: translateY(0) scale(1);
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            background: #f3f4f6;
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            transition: all 0.2s;
+        }
+
+        .close-modal:hover {
+            background: #e5e7eb;
+            color: var(--text-main);
+        }
+
+        .modal-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .modal-header h2 {
+            font-size: 2rem;
+            margin-bottom: 12px;
+        }
+
+        .modal-header p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        .pricing-cards {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .pricing-cards { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 600px) {
+            .pricing-cards { grid-template-columns: 1fr; }
+            .modal-container { padding: 24px; }
+        }
+
+        .pricing-card {
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            background: var(--container-bg);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .pricing-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .pricing-card.popular {
+            border: 2px solid var(--text-main);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .popular-badge {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--text-main);
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 4px 12px;
+            border-radius: 20px;
+            white-space: nowrap;
+        }
+
+        .pricing-card h3 {
+            font-size: 1.25rem;
+            margin-bottom: 16px;
+        }
+
+        .pricing-card .price {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 24px;
+        }
+
+        .pricing-card .price span {
+            font-size: 1rem;
+            font-weight: 400;
+            color: var(--text-muted);
+        }
+
+        .pricing-card ul {
+            list-style: none;
+            margin-bottom: 32px;
+            flex: 1;
+        }
+
+        .pricing-card ul li {
+            margin-bottom: 12px;
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .pricing-card ul li::before {
+            content: "✓";
+            color: #10b981;
+            font-weight: bold;
+        }
+
+        .sub-btn {
+            width: 100%;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--text-main);
+        }
+
+        .sub-btn:hover { background: var(--bg-color); }
+
+        .sub-btn.primary {
+            background: var(--text-main);
+            color: white;
+            border: none;
+        }
+
+        .sub-btn.primary:hover { background: #000000; }
+        .sub-btn.current {
+            background: #f3f4f6;
+            color: var(--text-muted);
+            cursor: default;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 初始状态拥有 is-home 类，展示首页居中效果 -->
+    <div class="chat-app is-home" id="chatApp">
+        
+        <!-- 顶部信息栏 -->
+        <header class="header">
+            <div class="header-left">
+                <div class="header-title">智能助手</div>
+                <nav class="nav-links">
+                    <a href="#" class="active">对话</a>
+                    <a href="#">对话历史</a>
+                    <a href="#">收藏</a>
+                </nav>
+            </div>
+            
+            <div class="header-right">
+                <div class="user-profile">
+                    <!-- 随机生成的头像 -->
+                    <img src="https://api.dicebear.com/7.x/notionists/svg?seed=Felix" alt="User Avatar" class="avatar">
+                    
+                    <!-- 悬停下拉菜单 -->
+                    <div class="dropdown-menu">
+                        <div class="dropdown-header">当前账户</div>
+                        
+                        <!-- 高级极简当前方案卡片 -->
+                        <div class="current-plan-card open-sub-modal" title="管理订阅方案">
+                            <div class="plan-name">Pro</div>
+                            <div class="plan-action">升级 / 管理</div>
+                        </div>
+
+                        <!-- Credits 余额数据 -->
+                        <div class="credits-info">
+                            <div class="credits-label">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                                </svg>
+                                Credits
+                            </div>
+                            <div class="credits-value">2,450</div>
+                        </div>
+
+                        <div class="dropdown-divider"></div>
+                        <a href="#" class="settings-link">
+                            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                            设置
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- 首页欢迎区域 -->
+        <div class="welcome-container" id="welcomeContainer">
+            <div class="welcome-logo">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                </svg>
+            </div>
+            <h1 class="welcome-title">有什么我可以帮您的？</h1>
+            <p class="welcome-subtitle">开始一段新的对话，或者尝试以下建议</p>
+        </div>
+
+        <!-- 对话消息列表 -->
+        <main class="message-area" id="messageArea"></main>
+
+        <!-- 底部输入区域 -->
+        <footer class="input-area">
+            <!-- 缩略图预览区域 -->
+            <div class="image-preview-container" id="imagePreviewContainer"></div>
+
+            <div class="input-box">
+                <!-- 上传/拍摄按钮 -->
+                <button class="upload-btn" id="uploadBtn" title="上传图片 / 拍摄">
+                    <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                        <polyline points="21 15 16 10 5 21"></polyline>
+                    </svg>
+                </button>
+                <input type="file" id="fileInput" accept="image/*" capture="environment" style="display: none;">
+
+                <textarea id="userInput" placeholder="输入消息，随时开始..." rows="1"></textarea>
+                
+                <button class="send-btn" id="sendBtn" title="发送 (Enter)">
+                    <svg viewBox="0 0 24 24">
+                        <line x1="12" y1="19" x2="12" y2="5"></line>
+                        <polyline points="5 12 12 5 19 12"></polyline>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- 快捷建议卡片 -->
+            <div class="suggestions-grid">
+                <button class="suggestion-card">
+                    <span>💡 头脑风暴</span>帮我构思一个科幻小说的开头...
+                </button>
+                <button class="suggestion-card">
+                    <span>📝 文本总结</span>提取这段长文章的核心观点...
+                </button>
+                <button class="suggestion-card">
+                    <span>💻 代码编写</span>用 Python 写一个贪吃蛇游戏...
+                </button>
+                <button class="suggestion-card">
+                    <span>🌍 语言翻译</span>将这封商务邮件翻译成专业的英文...
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- 订阅页 (Modal) -->
+    <div class="subscription-modal" id="subModal">
+        <div class="modal-container">
+            <button class="close-modal" id="closeSubModal">
+                <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+            
+            <div class="modal-header">
+                <h2>升级您的订阅方案</h2>
+                <p>获取更强大的模型能力、更高的调用额度和更快的响应速度</p>
+            </div>
+            
+            <div class="pricing-cards">
+                <div class="pricing-card">
+                    <h3>Free</h3>
+                    <div class="price">¥0<span>/月</span></div>
+                    <ul>
+                        <li>基础模型访问</li>
+                        <li>普通响应速度</li>
+                        <li>每天 50 次对话</li>
+                    </ul>
+                    <button class="sub-btn current">当前方案</button>
+                </div>
+                
+                <div class="pricing-card">
+                    <h3>Lite</h3>
+                    <div class="price">¥39<span>/月</span></div>
+                    <ul>
+                        <li>高级模型访问</li>
+                        <li>更快的响应速度</li>
+                        <li>每天 200 次对话</li>
+                    </ul>
+                    <button class="sub-btn">升级到 Lite</button>
+                </div>
+                
+                <div class="pricing-card popular">
+                    <div class="popular-badge">最受欢迎</div>
+                    <h3>Pro</h3>
+                    <div class="price">¥99<span>/月</span></div>
+                    <ul>
+                        <li>最强模型访问</li>
+                        <li>最高优先级响应</li>
+                        <li>无限对话次数</li>
+                        <li>多模态图片生成</li>
+                    </ul>
+                    <button class="sub-btn primary">升级到 Pro</button>
+                </div>
+                
+                <div class="pricing-card">
+                    <h3>Ultra</h3>
+                    <div class="price">¥199<span>/月</span></div>
+                    <ul>
+                        <li>包含 Pro 所有功能</li>
+                        <li>优先体验内测功能</li>
+                        <li>专属客服支持</li>
+                        <li>API 高级调用额度</li>
+                    </ul>
+                    <button class="sub-btn">升级到 Ultra</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const chatApp = document.getElementById('chatApp');
+            const messageArea = document.getElementById('messageArea');
+            const userInput = document.getElementById('userInput');
+            const sendBtn = document.getElementById('sendBtn');
+            const suggestionCards = document.querySelectorAll('.suggestion-card');
+            
+            const uploadBtn = document.getElementById('uploadBtn');
+            const fileInput = document.getElementById('fileInput');
+            const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+            
+            let currentImageBase64 = null;
+            let isFirstMessage = true;
+
+            // 订阅页弹窗逻辑
+            const subModal = document.getElementById('subModal');
+            const closeSubModalBtn = document.getElementById('closeSubModal');
+            const openSubModalBtns = document.querySelectorAll('.open-sub-modal');
+
+            // 打开弹窗
+            openSubModalBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    subModal.classList.add('active');
+                });
+            });
+
+            // 关闭弹窗
+            closeSubModalBtn.addEventListener('click', () => {
+                subModal.classList.remove('active');
+            });
+
+            // 点击背景关闭弹窗
+            subModal.addEventListener('click', (e) => {
+                if (e.target === subModal) {
+                    subModal.classList.remove('active');
+                }
+            });
+
+            // 自适应文本框高度
+            userInput.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight) + 'px';
+                if (this.value === '') this.style.height = 'auto';
+            });
+
+            // 图片上传
+            uploadBtn.addEventListener('click', () => fileInput.click());
+            
+            fileInput.addEventListener('change', function() {
+                const file = this.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        currentImageBase64 = e.target.result;
+                        showImagePreview(currentImageBase64);
+                        switchToChatMode();
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            const showImagePreview = (src) => {
+                imagePreviewContainer.innerHTML = `
+                    <div class="preview-wrapper">
+                        <img src="${src}" alt="Preview">
+                        <button class="remove-image" id="removeImageBtn">×</button>
+                    </div>
+                `;
+                imagePreviewContainer.style.display = 'flex';
+                document.getElementById('removeImageBtn').addEventListener('click', clearImagePreview);
+            };
+
+            const clearImagePreview = () => {
+                currentImageBase64 = null;
+                fileInput.value = '';
+                imagePreviewContainer.style.display = 'none';
+                imagePreviewContainer.innerHTML = '';
+            };
+
+            const scrollToBottom = () => {
+                messageArea.scrollTop = messageArea.scrollHeight;
+            };
+
+            const createMessageElement = (text, type, imageSrc = null) => {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = `message-row ${type}`;
+                const bubbleDiv = document.createElement('div');
+                bubbleDiv.className = 'bubble';
+                
+                let contentHTML = '';
+                if (imageSrc) contentHTML += `<img src="${imageSrc}" class="chat-image" alt="Uploaded Image">`;
+                if (text) contentHTML += text.replace(/\n/g, '<br>');
+                
+                bubbleDiv.innerHTML = contentHTML;
+                rowDiv.appendChild(bubbleDiv);
+                return rowDiv;
+            };
+
+            const createTypingIndicator = () => {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'message-row ai';
+                rowDiv.id = 'typingIndicator';
+                const bubbleDiv = document.createElement('div');
+                bubbleDiv.className = 'bubble typing-indicator';
+                bubbleDiv.innerHTML = '<span></span><span></span><span></span>';
+                rowDiv.appendChild(bubbleDiv);
+                return rowDiv;
+            };
+
+            const switchToChatMode = () => {
+                if (isFirstMessage) {
+                    chatApp.classList.remove('is-home');
+                    isFirstMessage = false;
+                }
+            };
+
+            const handleSend = (overrideText = null) => {
+                const text = overrideText || userInput.value.trim();
+                if (!text && !currentImageBase64) return;
+
+                switchToChatMode();
+
+                const userMsgEl = createMessageElement(text, 'user', currentImageBase64);
+                messageArea.appendChild(userMsgEl);
+                
+                userInput.value = '';
+                userInput.style.height = 'auto';
+                clearImagePreview();
+                setTimeout(scrollToBottom, 10);
+
+                const typingEl = createTypingIndicator();
+                messageArea.appendChild(typingEl);
+                setTimeout(scrollToBottom, 10);
+
+                const delay = Math.floor(Math.random() * 1000) + 1000;
+                setTimeout(() => {
+                    const indicator = document.getElementById('typingIndicator');
+                    if (indicator) indicator.remove();
+
+                    let aiResponse = "";
+                    if (!text && currentImageBase64) {
+                        aiResponse = "我看到你发送了一张图片，请问需要我帮你分析什么？";
+                    } else {
+                        aiResponse = `你刚才说：“${text}”。这里是模拟回复，界面已经顺利切换至对话模式啦！`;
+                    }
+                    
+                    const aiMsgEl = createMessageElement(aiResponse, 'ai');
+                    messageArea.appendChild(aiMsgEl);
+                    scrollToBottom();
+                }, delay);
+            };
+
+            sendBtn.addEventListener('click', () => handleSend());
+
+            userInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                }
+            });
+
+            suggestionCards.forEach(card => {
+                card.addEventListener('click', () => {
+                    const clone = card.cloneNode(true);
+                    const span = clone.querySelector('span');
+                    if(span) clone.removeChild(span);
+                    handleSend(clone.textContent.trim());
+                });
+            });
+        });
+    </script>
+</body>
+</html>
